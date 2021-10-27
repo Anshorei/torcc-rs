@@ -1,0 +1,42 @@
+# Tor Controller Client
+
+## Roadmap
+- [ ] SETCONF
+- [ ] RESETCONF
+- [ ] GETCONF
+- [ ] SETEVENTS
+- [ ] AUTHENTICATE
+  - [*] Password
+  - [*] Cookie
+  - [ ] Safe cookie
+- [ ] SAVECONF
+- [ ] SIGNAL
+- [ ] MAPADDRESS
+- [*] GETINFO
+- [ ] EXTENDCIRCUIT
+- [ ] SETCIRCUITPURPOSE
+- [ ] SETROUTERPURPOSE
+- [ ] ATTACHSTREAM
+- [ ] POSTDESCRIPTOR
+- [ ] REDIRECTSTREAM
+- [ ] CLOSESTREAM
+- [ ] CLOSECIRCUIT
+- [ ] QUIT
+- [ ] USEFEATURE
+- [ ] RESOLVE
+- [*] PROTOCOLINFO
+- [ ] LOADCONF
+- [ ] TAKEOWNERSHIP
+- [ ] AUTHCHALLENGE
+- [ ] DROPGUARDS
+- [ ] HSFETCH
+- [ ] ADD_ONION
+  - [*] Basic
+  - [ ] Parameters
+- [*] DEL_ONION
+- [ ] HSPOST
+- [ ] ONION_CLIENT_AUTH_ADD
+- [ ] ONION_CLIENT_AUTH_REMOVE
+- [ ] ONION_CLIENT_AUTH_VIEW
+- [ ] DROPOWNERSHIP
+- [ ] DROPTIMEOUTS

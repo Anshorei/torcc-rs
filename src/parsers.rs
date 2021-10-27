@@ -46,7 +46,7 @@ pub fn protocol_info(input: &str) -> IResult<&str, ProtocolInfo> {
 
 	let (i, methods) = delimited(tag("250-AUTH METHODS="), comma_separated_values, tag(" "))(i)?;
 	// TODO: do something with cookiefile
-	let (i, _cookiefile) = delimited(tag("COOKIEFILE=\""), is_not("\""), tag("\""))(i)?;
+	let (i, cookiefile) = delimited(tag("COOKIEFILE=\""), is_not("\""), tag("\""))(i)?;
 	let (i, _) = line_ending(i)?;
 
 	let (i, version) = delimited(tag("250-VERSION Tor=\""), is_not("\""), tag("\""))(i)?;
@@ -58,6 +58,7 @@ pub fn protocol_info(input: &str) -> IResult<&str, ProtocolInfo> {
 	let (i, _) = tag("250 OK")(i)?;
 
 	let protocol_info = ProtocolInfo {
+		cookiefile: cookiefile.to_string(),
 		auth_methods: methods
 			.iter()
 			.map(|method| AuthMethod::from_str(method).unwrap())
@@ -132,7 +133,6 @@ pub fn add_onion(input: &str) -> IResult<&str, (ServiceID, Option<(KeyType, Stri
 #[cfg(test)]
 mod tests {
 	use crate::controller::{AuthMethod, KeyType, ProtocolInfo, ServiceID};
-	use nom::IResult;
 
 	#[test]
 	fn test_protocol_info() {
@@ -143,6 +143,7 @@ mod tests {
       Ok(("", ProtocolInfo {
         auth_methods: vec![AuthMethod::Cookie, AuthMethod::SafeCookie],
         version: "0.1.2.3".to_string(),
+				cookiefile: "/var/run/tor/control.authcookie".to_string(),
       }))
     )
 	}

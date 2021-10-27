@@ -1,14 +1,14 @@
+use std::collections::HashMap;
 use std::io::prelude::*;
 
-use std::fmt::Debug;
-use std::io::{BufReader};
+use std::fmt::{Debug, Write as FmtWrite};
+use std::io::{BufReader, Write};
 use std::net::{TcpStream, ToSocketAddrs};
 use std::str::FromStr;
 
 use nom::IResult;
 
 use crate::parsers;
-use crate::parsers::{authenticate, is_final_line, protocol_info};
 
 mod error;
 use error::Error;
@@ -19,6 +19,7 @@ const DEFAULT_API: &'static str = "127.0.0.1:9051";
 pub struct ProtocolInfo {
 	pub auth_methods: Vec<AuthMethod>,
 	pub version:      String,
+	pub cookiefile: String,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -37,6 +38,36 @@ impl FromStr for AuthMethod {
 			"SAFECOOKIE" => Ok(AuthMethod::SafeCookie),
 			"HASHEDPASSWORD" => Ok(AuthMethod::HashedPassword),
 			_ => Err(Error::UnknownAuthMethod),
+		}
+	}
+}
+
+pub enum Signal {
+	Reload,
+	Shutdown,
+	Dump,
+	Debug,
+	Halt,
+	ClearDNSCache,
+	Newnym,
+	Heartbeat,
+	Dormant,
+	Active,
+}
+
+impl ToString for Signal {
+	fn to_string(&self) -> String {
+		match self {
+			Signal::Reload => "RELOAD".to_string(),
+			Signal::Shutdown => "SHUTDOWN".to_string(),
+			Signal::Dump => "DUMP".to_string(),
+			Signal::Debug => "DEBUG".to_string(),
+			Signal::Halt => "HALT".to_string(),
+			Signal::ClearDNSCache => "CLEARDNSCACHE".to_string(),
+			Signal::Newnym => "NEWNYM".to_string(),
+			Signal::Heartbeat => "HEARTBEAT".to_string(),
+			Signal::Dormant => "DORMANT".to_string(),
+			Signal::Active => "ACTIVE".to_string(),
 		}
 	}
 }
@@ -123,7 +154,7 @@ impl TorController {
 			let mut line = String::new();
 			reader.read_line(&mut line)?;
 			buffer.push_str(&line);
-			if is_final_line(&line) {
+			if parsers::is_final_line(&line) {
 				break;
 			}
 		}
@@ -135,20 +166,50 @@ impl TorController {
 		return match reply_parser(&buffer) {
 			Ok((_, response)) => Ok(response),
 			Err(_) => Err(Error::InternalError),
-		}
+		};
 	}
 
-	pub fn authenticate(&mut self, password: String) -> Result<(), Error> {
+	fn authenticate(&mut self, password: String) -> Result<(), Error> {
 		let authentication_string = format!("AUTHENTICATE \"{}\"", password.replace("\"", "\\\""));
-		self.send(authentication_string, authenticate)?;
+		self.send(authentication_string, parsers::is_ok)?;
 
 		Ok(())
 	}
 
+	// pub fn authenticate_authcookie(&mut self, password: String) -> Result<(), Error> {
+	// 	let protocol_info = self.protocol_info()?;
+	// 	unimplemented!();
+	// 	Ok(())
+	// }
+
 	pub fn protocol_info(&mut self) -> Result<ProtocolInfo, Error> {
-		let response = self.send(String::from("PROTOCOLINFO"), protocol_info)?;
+		let response = self.send(String::from("PROTOCOLINFO"), parsers::protocol_info)?;
 
 		Ok(response)
+	}
+
+	fn connect<A: ToSocketAddrs>(addr: A) -> Result<TorController, Error> {
+		let conn = TcpStream::connect(addr)?;
+		let controller = Self { conn };
+		Ok(controller)
+	}
+
+	pub fn connect_default_with_authcookie() -> Result<TorController, Error> {
+		TorController::connect_with_authcookie(DEFAULT_API)
+	}
+
+	pub fn connect_with_authcookie<A: ToSocketAddrs>(addr: A) -> Result<TorController, Error> {
+		let mut controller = TorController::connect(addr)?;
+		let protocol_info = controller.protocol_info()?;
+
+		let contents = std::fs::read(&protocol_info.cookiefile).unwrap();
+		let mut cookie_string = String::new();
+		contents.into_iter().for_each(|b| write!(cookie_string, "{:02X}", b).unwrap());
+
+		let msg = format!("AUTHENTICATE {}", cookie_string);
+		controller.send(msg, parsers::is_ok)?;
+
+		Ok(controller)
 	}
 
 	pub fn connect_default_with_password(password: String) -> Result<TorController, Error> {
@@ -159,8 +220,7 @@ impl TorController {
 		addr: A,
 		password: String,
 	) -> Result<TorController, Error> {
-		let conn = TcpStream::connect(addr)?;
-		let mut controller = Self { conn };
+		let mut controller = TorController::connect(addr)?;
 
 		let protocol_info = controller.protocol_info()?;
 
@@ -218,6 +278,20 @@ impl TorController {
 
 		Ok(())
 	}
+
+	pub fn get_info(&mut self, info_fields: Vec<&str>) -> Result<HashMap<String, String>, Error> {
+		let get_info_command = format!("GETINFO {}", info_fields.join(" "));
+		let response = self.send(get_info_command, parsers::get_info)?;
+
+		Ok(response)
+	}
+
+	pub fn signal(&mut self, signal: Signal) -> Result<(), Error> {
+		let signal_command = format!("SIGNAL {}", signal.to_string());
+		self.send(signal_command, parsers::is_ok)?;
+
+		Ok(())
+	}
 }
 
 #[cfg(test)]
@@ -229,15 +303,15 @@ mod tests {
 	}
 
 	fn get_controller() -> TorController {
-		let password = std::env::var("TOR_CONTROLLER_PASSWORD").expect("TOR_CONTROLLER_PASSWORD is not set");
-		TorController::connect_default_with_password(password).unwrap()
+		TorController::connect_default_with_authcookie().unwrap()
 	}
 
 	#[test]
 	fn establish_connection() {
 		init();
 
-		let password = std::env::var("TOR_CONTROLLER_PASSWORD").expect("TOR_CONTROLLER_PASSWORD is not set");
+		let password =
+			std::env::var("TOR_CONTROLLER_PASSWORD").expect("TOR_CONTROLLER_PASSWORD is not set");
 		let result = TorController::connect_default_with_password(password);
 		assert!(result.is_ok());
 	}
@@ -256,7 +330,9 @@ mod tests {
 		init();
 
 		let mut controller = get_controller();
-		let hidden_service = controller.add_onion_default(80).expect("Error adding onion");
+		let hidden_service = controller
+			.add_onion_default(80)
+			.expect("Error adding onion");
 		assert!(controller.delete_onion(hidden_service.service_id).is_ok());
 	}
 
@@ -265,5 +341,12 @@ mod tests {
 		let mut controller = get_controller();
 		let service_id = ServiceID::from("does not exist".to_string());
 		assert!(controller.delete_onion(service_id).is_err());
+	}
+
+	#[test]
+	fn get_info() {
+		let mut controller = get_controller();
+		let info = controller.get_info(vec!["version"]).unwrap();
+		assert!(info.contains_key("version"));
 	}
 }

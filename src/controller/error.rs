@@ -11,5 +11,5 @@ pub enum Error {
 	#[error("I/O Error: `{0}`")]
 	Io(#[from] std::io::Error),
 	#[error("Internal error parsing controller response")]
-	InternalError
+	InternalError,
 }
