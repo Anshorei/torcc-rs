@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::io::prelude::*;
-
 use std::fmt::{Debug, Write as FmtWrite};
 use std::io::{BufReader, Write};
 use std::net::{TcpStream, ToSocketAddrs};
@@ -318,8 +317,6 @@ mod tests {
 
 	#[test]
 	fn create_onion() {
-		init();
-
 		let mut controller = get_controller();
 		let hidden_service = controller.add_onion(KeyType::Best, 80);
 		assert!(hidden_service.is_ok());
@@ -327,8 +324,6 @@ mod tests {
 
 	#[test]
 	fn delete_onion() {
-		init();
-
 		let mut controller = get_controller();
 		let hidden_service = controller
 			.add_onion_default(80)

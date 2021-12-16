@@ -6,13 +6,13 @@
 - [ ] GETCONF
 - [ ] SETEVENTS
 - [ ] AUTHENTICATE
-  - [*] Password
-  - [*] Cookie
+  - [x] Password
+  - [x] Cookie
   - [ ] Safe cookie
 - [ ] SAVECONF
 - [ ] SIGNAL
 - [ ] MAPADDRESS
-- [*] GETINFO
+- [x] GETINFO
 - [ ] EXTENDCIRCUIT
 - [ ] SETCIRCUITPURPOSE
 - [ ] SETROUTERPURPOSE
@@ -24,16 +24,16 @@
 - [ ] QUIT
 - [ ] USEFEATURE
 - [ ] RESOLVE
-- [*] PROTOCOLINFO
+- [x] PROTOCOLINFO
 - [ ] LOADCONF
 - [ ] TAKEOWNERSHIP
 - [ ] AUTHCHALLENGE
 - [ ] DROPGUARDS
 - [ ] HSFETCH
 - [ ] ADD_ONION
-  - [*] Basic
+  - [x] Basic
   - [ ] Parameters
-- [*] DEL_ONION
+- [x] DEL_ONION
 - [ ] HSPOST
 - [ ] ONION_CLIENT_AUTH_ADD
 - [ ] ONION_CLIENT_AUTH_REMOVE

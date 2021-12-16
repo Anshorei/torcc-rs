@@ -1,6 +1,6 @@
 [package]
 name = "torcc-rs"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Ansho Rei <anshorei@zeroid.bit>"]
 edition = "2018"
 description = "Tor controller client library"
@@ -16,7 +16,7 @@ license = "WTFPL"
 
 [dependencies]
 log = "0.4"
-nom = "7.0"
+nom = "7.1"
 rand = "0.8"
 thiserror = "1.0"
 
